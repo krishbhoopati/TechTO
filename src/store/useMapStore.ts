@@ -19,6 +19,8 @@ export interface CandidateMarker {
   label: string;
 }
 
+export type MapFocusOffsetMode = "default" | "expanded-chat";
+
 interface MapState {
   selectedStationId: string | null;
   selectedScenarioId: string | null;
@@ -28,6 +30,7 @@ interface MapState {
     center: [number, number];
     zoom: number;
     durationMs?: number;
+    focusOffsetMode?: MapFocusOffsetMode;
   } | null;
   boundsTarget: {
     bounds: [number, number, number, number];
@@ -50,7 +53,12 @@ interface MapActions {
   toggleLayer: (layer: keyof MapLayerVisibility, visible?: boolean) => void;
   setLayerVisibility: (layers: Partial<MapLayerVisibility>) => void;
   setCameraTarget: (
-    target: { center: [number, number]; zoom: number; durationMs?: number } | null,
+    target: {
+      center: [number, number];
+      zoom: number;
+      durationMs?: number;
+      focusOffsetMode?: MapFocusOffsetMode;
+    } | null,
   ) => void;
   setBoundsTarget: (
     target: {

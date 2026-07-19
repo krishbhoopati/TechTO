@@ -24,6 +24,15 @@ import type {
 } from "@/components/planner/CityPlanStrip";
 import { ChatMarkdown } from "@/components/chat/ChatMarkdown";
 import { PdfExportButton } from "@/components/chat/PdfExportButton";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
+import {
+  buildEvChargingDemoMapActions,
+  EV_CHARGING_DEMO_DELAY_MS,
+  EV_CHARGING_DEMO_FLIGHT_MS,
+  EV_CHARGING_DEMO_FLIGHT_START_MS,
+  EV_CHARGING_DEMO_RESPONSE,
+  matchesEvChargingDemoPrompt,
+} from "@/lib/planner/ev-charging-demo";
 
 interface ChatMessage {
   id: string;
@@ -78,8 +87,10 @@ export function MapChatBar({
   /** Which trace line ids are expanded (click the row to toggle). */
   const [openTraceIds, setOpenTraceIds] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
+  const demoTimersRef = useRef<number[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const appliedMapMidstream = useRef(false);
+  const reducedMotion = useReducedMotion();
 
   const selectedPlace = useMapStore((s) => s.selectedPlace);
   const layers = useMapStore((s) => s.layers);
@@ -114,6 +125,14 @@ export function MapChatBar({
       )
       .catch(() => undefined);
   }, []);
+
+  useEffect(
+    () => () => {
+      for (const timer of demoTimersRef.current) window.clearTimeout(timer);
+      demoTimersRef.current = [];
+    },
+    [],
+  );
 
   const lastRecommendation = useMemo(() => {
     if (!run) return null;
@@ -153,6 +172,53 @@ export function MapChatBar({
     setExpanded(true);
     setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: "user", content: text }]);
     setInput("");
+
+    if (matchesEvChargingDemoPrompt(text)) {
+      for (const timer of demoTimersRef.current) window.clearTimeout(timer);
+      demoTimersRef.current = [];
+
+      const deadline = window.performance.now() + EV_CHARGING_DEMO_DELAY_MS;
+      let mapApplied = false;
+      const applyDemoMap = (durationMs: number) => {
+        if (mapApplied) return;
+        mapApplied = true;
+        applyMapActions(buildEvChargingDemoMapActions(durationMs), {
+          focusOffsetMode: "expanded-chat",
+        });
+      };
+
+      if (!reducedMotion) {
+        const flightTimer = window.setTimeout(() => {
+          const remainingMs = Math.max(
+            0,
+            Math.min(
+              EV_CHARGING_DEMO_FLIGHT_MS,
+              Math.round(deadline - window.performance.now()),
+            ),
+          );
+          applyDemoMap(remainingMs);
+        }, EV_CHARGING_DEMO_FLIGHT_START_MS);
+        demoTimersRef.current.push(flightTimer);
+      }
+
+      const revealTimer = window.setTimeout(() => {
+        // Reduced-motion users jump at the deadline. This is also a fallback
+        // if the browser delayed the early flight timer past the deadline.
+        applyDemoMap(0);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `ev-charging-demo-${Date.now()}`,
+            role: "assistant",
+            content: EV_CHARGING_DEMO_RESPONSE,
+          },
+        ]);
+        setBusy(false);
+        demoTimersRef.current = [];
+      }, EV_CHARGING_DEMO_DELAY_MS);
+      demoTimersRef.current.push(revealTimer);
+      return;
+    }
 
     const visibleLayers = Object.entries(layers)
       .filter(([, on]) => on)

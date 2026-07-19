@@ -4,6 +4,7 @@ import {
   BUILDING_HEIGHT_EXPRESSION,
   LOCALIZED_BUILDINGS_3D_LAYER,
   deriveAgent3DFocus,
+  localized3DExpandedChatOffset,
   localized3DOffset,
   localized3DZoom,
   localizedBuildingFilter,
@@ -49,6 +50,12 @@ describe("localized agent 3D focus", () => {
     expect(localized3DOffset(500)).toEqual([0, -110]);
     expect(localized3DOffset(800)).toEqual([0, -160]);
     expect(localized3DOffset(1400)).toEqual([0, -210]);
+  });
+
+  it("moves the hardcoded demo focus above its expanded transcript", () => {
+    expect(localized3DExpandedChatOffset(500)).toEqual([0, -170]);
+    expect(localized3DExpandedChatOffset(800)).toEqual([0, -272]);
+    expect(localized3DExpandedChatOffset(1400)).toEqual([0, -330]);
   });
 
   it("prefers explicit intervention geometry over a broad neighbourhood", () => {

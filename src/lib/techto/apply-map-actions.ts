@@ -3,7 +3,12 @@
 import { focusPrimaryMapRecommendation, type MapAction } from "@/lib/techto/map-actions";
 import type { AgentMapOverlay } from "@/lib/techto/map-overlays";
 import { deriveAgent3DFocus } from "@/lib/map/localized-3d";
-import { useMapStore, type CandidateMarker, type MapLayerVisibility } from "@/store/useMapStore";
+import {
+  useMapStore,
+  type CandidateMarker,
+  type MapFocusOffsetMode,
+  type MapLayerVisibility,
+} from "@/store/useMapStore";
 import { useTechTOStore } from "@/store/useTechTOStore";
 
 /**
@@ -13,7 +18,10 @@ import { useTechTOStore } from "@/store/useTechTOStore";
  * MapCanvas never sees a 2D fly followed by a pitch-only ease (which dropped
  * the zoom boost / 3D framing).
  */
-export function applyMapActions(actions: MapAction[]): void {
+export function applyMapActions(
+  actions: MapAction[],
+  options: { focusOffsetMode?: MapFocusOffsetMode } = {},
+): void {
   if (actions.length === 0) return;
 
   // One recommendation = one blue marker + fly there (not a litter of options).
@@ -34,6 +42,9 @@ export function applyMapActions(actions: MapAction[]): void {
         center: action.center,
         zoom: action.zoom,
         durationMs: action.durationMs,
+        ...(options.focusOffsetMode
+          ? { focusOffsetMode: options.focusOffsetMode }
+          : {}),
       };
       boundsTarget = null;
     } else if (action.type === "fit_bounds") {

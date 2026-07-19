@@ -28,6 +28,20 @@ export function localized3DOffset(viewportHeight: number): [number, number] {
   return [0, -upwardPixels];
 }
 
+/** Keep a focused site clear of the unusually tall hardcoded demo transcript. */
+export function localized3DExpandedChatOffset(
+  viewportHeight: number,
+): [number, number] {
+  const upwardPixels = Math.round(
+    Math.min(
+      330,
+      Math.max(140, viewportHeight * 0.34),
+      viewportHeight * 0.42,
+    ),
+  );
+  return [0, -upwardPixels];
+}
+
 type FocusGeometry =
   | GeoJSON.Point
   | GeoJSON.LineString
