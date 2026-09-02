@@ -1,13 +1,18 @@
 # TechTO: Toronto planning decision support
 
-TechTO is a Next.js and MapLibre decision-support application for City of
-Toronto planning. The map and chat let a planner ask free-form questions,
-inspect an area, compare options, request map changes, and examine a simulated
-distribution of day-one acceptance.
+> “the Claude Code of city planning”
+
+TechTO is a cloud-first Next.js and MapLibre decision-support application for
+City of Toronto planning. It brings an AI-agent workflow to planning: the map
+and chat let a planner ask free-form questions, inspect an area, compare
+options, request map changes, and examine a simulated distribution of day-one
+acceptance.
 
 The product front door is `/`: the open-city TechTO dashboard. Chat runs the
-live Backboard Planning Orchestrator with optional twin tools and specialist
-calls.
+cloud-hosted Backboard Planning Orchestrator with optional twin tools and
+specialist calls. Wherever practical, TechTO uses managed cloud services for
+orchestration, opinion modeling, and data access so teams can collaborate and
+scale without maintaining local infrastructure.
 
 The system predicts acceptance, not physical or economic consequences. It does
 not treat simulated reactions as consultation, and it does not claim ridership,
@@ -50,14 +55,15 @@ npm run dev
 Copy `.env.example` to `.env.local` and configure the server-only services used
 by the surface you are running:
 
-- `BACKBOARD_API_KEY` is required for live Backboard chat. There is no mock
-  Backboard adapter.
+- `BACKBOARD_API_KEY` is required for live chat through the cloud-hosted
+  Backboard service. There is no mock Backboard adapter.
 - `TECHTO_CITIZEN_REACTION_PROVIDER=real-opinion` (default) and the FreeSolo
   variables drive both TechTO citizen reactions and the open-city
   `score_population`/`run_twin_analysis` tools -- there is one real
   opinion-model pipeline, no synthetic/mock fallback.
 - `TECHTO_REPOSITORY_PROVIDER=fixture|mongo` selects local transit fixtures or
-  MongoDB Atlas for TechTO repository reads.
+  cloud-hosted MongoDB Atlas for TechTO repository reads. Use `mongo` for
+  shared and deployed environments wherever possible.
 - `NEXT_PUBLIC_MAP_STYLE_URL` optionally overrides the MapLibre base style.
 
 Never expose Backboard, FreeSolo, or MongoDB credentials through a
