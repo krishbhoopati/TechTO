@@ -1,104 +1,100 @@
 # TechTO: Toronto planning decision support
 
-> “the Claude Code of city planning”
+> "the Claude Code of city planning"
 
-TechTO is a cloud-first Next.js and MapLibre decision-support application for
-City of Toronto planning. It brings an AI-agent workflow to planning: the map
-and chat let a planner ask free-form questions, inspect an area, compare
-options, request map changes, and examine a simulated distribution of day-one
-acceptance.
+TechTO is an AI decision-support workspace for City of Toronto planning. It
+combines a conversational agent, an interactive MapLibre city view, a versioned
+city twin, and a population-opinion simulator. Planners can explore Toronto,
+compare interventions, update the map, and examine a simulated distribution of
+day-one resident acceptance. `/` is the landing page, and `/city` is the
+planning workspace.
 
-The product front door is `/`: the open-city TechTO dashboard. Chat runs the
-cloud-hosted Backboard Planning Orchestrator with optional twin tools and
-specialist calls. Wherever practical, TechTO uses managed cloud services for
-orchestration, opinion modeling, and data access so teams can collaborate and
-scale without maintaining local infrastructure.
+## Claude on Backboard
 
-The system predicts acceptance, not physical or economic consequences. It does
-not treat simulated reactions as consultation, and it does not claim ridership,
-emissions, congestion, or financial returns without separate validated models
-and evidence.
+Claude is TechTO's planning brain. Backboard provides the live cloud runtime for
+assistants, conversation threads, tools, specialists, and streaming. The current
+Backboard model is Anthropic's Claude Fable 5 (`claude-fable-5`). Model selection
+is capability-based at runtime, with Anthropic first in the provider preference
+order.
 
-## Chat answers and reports
+The Planning Orchestrator works like a coding agent over a city twin. It can
+answer directly, use general tools to query, patch, snapshot, analyze, and diff
+Toronto data, or call planning, equity, feasibility, citizen-response, evidence,
+and review specialists. It returns concise recommendations and map actions, not
+a scripted report. Individual answers and complete conversations can be exported
+as print-ready PDFs.
 
-Planning recommendations use concise Markdown sections when relevant:
+## Models and cloud services
 
-1. Recommendation
-2. Why this area
-3. Sustainability potential
-4. Screening metrics
-5. ROI and value case
-6. Success KPIs to validate
-7. What to validate next
+TechTO keeps planning reasoning and population simulation separate:
 
-ROI is an evidence contract, not a required headline number. The feasibility
-specialist separates measured inputs, modeled monetized benefits, unvalidated
-assumptions, and scenario ranges. It calculates
-`(validated monetized benefits - lifecycle costs) / lifecycle costs` only when
-both sides are supported. Otherwise the answer says which demand, cost, and
-benefit assumptions must be validated. NPV, benefit-cost ratio, payback period,
-discount rate, analysis horizon, and sensitivity are included when available.
+| Layer | Model or service | Responsibility |
+| --- | --- | --- |
+| Planning agent | Claude Fable 5 through Backboard | Reasons about the request, selects tools, coordinates specialists, and explains recommendations. |
+| Population opinion model | Fine-tuned Qwen3.5-9B LoRA through FreeSolo Flash and Modal | Writes first-person opinions for sampled resident personas and supports the day-one acceptance distribution. |
+| Shared data | MongoDB Atlas, optional | Stores resident personas and, when `TECHTO_REPOSITORY_PROVIDER=mongo`, shared transit data. Local fixtures remain available for development and tests. |
+| Map tiles | OpenFreeMap by default | Supplies the configurable MapLibre basemap. |
 
-Every assistant answer has an **Export PDF** control. The main transcript and
-selected-place chat also export complete conversations. Export opens a clean,
-print-ready report containing the question, response, citations, Toronto
-context, timestamp, and decision-support disclaimer. Choose **Save as PDF** in
-the browser print dialog.
+## Interpretation limits
+
+TechTO estimates simulated day-one acceptance, not real public opinion or public
+consultation. It does not predict ridership, emissions, congestion, land value,
+or financial returns unless those outcomes are supplied by separate validated
+models and evidence. Acceptance is presented as a distribution with uncertainty,
+not as a single authoritative forecast.
 
 ## Local setup
 
 ```bash
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-Copy `.env.example` to `.env.local` and configure the server-only services used
-by the surface you are running:
+Open `http://localhost:3000`, then enter the planning workspace at `/city`.
+Configure only the services needed for the surface you are running:
 
-- `BACKBOARD_API_KEY` is required for live chat through the cloud-hosted
-  Backboard service. There is no mock Backboard adapter.
-- `TECHTO_CITIZEN_REACTION_PROVIDER=real-opinion` (default) and the FreeSolo
-  variables drive both TechTO citizen reactions and the open-city
-  `score_population`/`run_twin_analysis` tools -- there is one real
-  opinion-model pipeline, no synthetic/mock fallback.
-- `TECHTO_REPOSITORY_PROVIDER=fixture|mongo` selects local transit fixtures or
-  cloud-hosted MongoDB Atlas for TechTO repository reads. Use `mongo` for
-  shared and deployed environments wherever possible.
-- `NEXT_PUBLIC_MAP_STYLE_URL` optionally overrides the MapLibre base style.
+- `BACKBOARD_API_KEY` enables live Claude planning through Backboard. There is
+  no mock Backboard adapter.
+- `FREESOLO_API_KEY`, `FREESOLO_BASE_URL`, and
+  `TECHTO_OPINION_MODEL_ALIAS` enable live resident-opinion inference.
+- `TECHTO_REPOSITORY_PROVIDER=fixture|mongo` selects local fixtures or MongoDB
+  Atlas. Use `mongo` for shared environments after running the Mongo bootstrap.
+- `NEXT_PUBLIC_MAP_STYLE_URL` optionally overrides the OpenFreeMap style.
 
-Never expose Backboard, FreeSolo, or MongoDB credentials through a
-`NEXT_PUBLIC_` variable.
+Keep Backboard, FreeSolo, and MongoDB credentials server-side. Never expose them
+through a `NEXT_PUBLIC_` variable.
 
-## Map data
+## Data
 
-- Basemap: OpenFreeMap by default, with a configurable MapLibre style.
-- Neighbourhoods: City of Toronto 158-neighbourhood boundaries joined with
-  2021 Census profile indicators.
-- Transit: TTC subway, LRT, and streetcar geometry derived from official GTFS.
-- Residents: a synthetic visualization weighted to neighbourhood population.
+- Neighbourhood boundaries and profile indicators cover all 158 City of
+  Toronto neighbourhoods using 2021 Census data.
+- Subway, LRT, streetcar, and bus geometry is prepared from official TTC GTFS.
+- The web app prefers resident personas from MongoDB and uses local synthetic
+  display fixtures when that repository is unavailable.
+- Population research inputs and preparation code live under `data/`,
+  `population/`, and `scripts/data/`. Generated map inputs live under
+  `public/data/`.
 
-Generated web map inputs live under `public/data/`. Data preparation and the
-research population pipeline live under `scripts/data/`, `data/`, and
-`population/`. See `AGENTS.md` for provenance, calibration requirements, and
-the distinction between the research population files and TechTO fixtures.
+See [AGENTS.md](AGENTS.md) for modeling boundaries, data provenance, and the
+distinction between the research population pipeline and web fixtures.
 
 ## Commands
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run build
+npm run check
 npm run test:e2e
 npm run backboard:bootstrap
 npm run backboard:status
 npm run backboard:smoke
+npm run mongo:bootstrap
+npm run mongo:status
 ```
 
-Backboard commands require live credentials. Playwright smoke tests stub costly
-live planning turns where appropriate.
+`npm run check` runs lint, type checking, unit tests, and a production build.
+Backboard and MongoDB commands require their corresponding live credentials.
 
 ## Stack
 
-Next.js App Router, React, TypeScript strict mode, Tailwind CSS, MapLibre GL JS,
-Zustand, Backboard, FreeSolo, optional MongoDB Atlas, Vitest, and Playwright.
+Next.js, React, TypeScript, Tailwind CSS, MapLibre GL JS, Zustand, Backboard,
+Claude Fable 5, FreeSolo Flash, Modal, MongoDB Atlas, Vitest, and Playwright.
